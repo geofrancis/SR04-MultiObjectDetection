@@ -1,8 +1,3 @@
-
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-
 #include <ADC.h>
 #include <ADC_util.h>
 
@@ -10,15 +5,10 @@
 #define ECHO_PIN 12
 #define ANALOG_PIN A9
 
-#define COMPUTER_SAMPLE_DEBUG
+//#define COMPUTER_SAMPLE_DEBUG
 
 // Sets the display mode for the onboard OLED
-//#define DISPLAY_MODE_TEXT
-#define DISPLAY_MODE_PING
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, 4);
-
+#define DISPLAY_MODE_TEXT
 ADC *adc = new ADC();
 
 // maximum number of samples in buffer
@@ -29,12 +19,7 @@ unsigned int count = 0;  // buffer position
 
 void setup() {
   Serial.begin(115200);
-  //while (!Serial);
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    for (;;); // Fail if screen isn't connected
-  }
-  display.display();
+
   Serial.println("init");
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(TRIG_PIN, OUTPUT);
@@ -48,7 +33,7 @@ void setup() {
   adc->adc0->setResolution(16); // set bits of resolution
 
   // can be: VERY_LOW_SPEED, LOW_SPEED, MED_SPEED, HIGH_SPEED_16BITS, HIGH_SPEED or VERY_HIGH_SPEED
-  adc->adc0->setConversionSpeed(ADC_CONVERSION_SPEED::HIGH_SPEED_16BITS); // change the conversion speed to high speed 16 bit
+  adc->adc0->setConversionSpeed(ADC_CONVERSION_SPEED::HIGH_SPEED); // change the conversion speed to high speed 16 bit
   // it can be any of the ADC_MED_SPEED enum: VERY_LOW_SPEED, LOW_SPEED, MED_SPEED, HIGH_SPEED or VERY_HIGH_SPEED
   adc->adc0->setSamplingSpeed(ADC_SAMPLING_SPEED::VERY_HIGH_SPEED); // fastest sampling
 
@@ -112,12 +97,8 @@ void loop() {
 
   // Display mode 1
   // Information about ping and detections
-#ifdef DISPLAY_MODE_TEXT
 
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0, 16);
+
 
   int ping_index, ping_index_end;
   int thresh = meanval + (maxval - meanval) * 0.5;
@@ -147,7 +128,7 @@ void loop() {
     if (rms > thresh && !found_ping) {
       float distance = i * 0.7684 / 2;
       Serial.print(distance);
-      display.print(distance);
+      
       found_ping = true;
       ping_index = i;
       i += 300; // jump forward 11 samples since 40khz period is ~11 samples at this sample rate
@@ -155,45 +136,11 @@ void loop() {
       ping_index_end = i;
       found_ping = false;
       Serial.print(" ");
-      display.print(" ");
-      display.println(i * 0.7684 / 2);
+     
     }
   }
   Serial.println();
 
-  display.display();
-#endif
-
-  // Display mode 2
-  // Plot of ping response
-#ifdef DISPLAY_MODE_PING
-  display.clearDisplay();
-  int binsize = MAXCOUNT / SCREEN_WIDTH;
-  int tick_height = 16;
-  int ticks = 8;
-  for (int i = 0; i < ticks; i++) {
-    int x = (SCREEN_WIDTH / ticks) * i;
-    int y = SCREEN_HEIGHT - tick_height + 1;
-    display.drawPixel(x, y, SSD1306_WHITE);
-    display.drawPixel(x, y + 1, SSD1306_WHITE);
-    display.drawPixel(x, y + 2, SSD1306_WHITE);
-    display.setTextSize(1);
-    display.setTextColor(WHITE);
-    display.setCursor(x, y + 6);
-    display.print(i);
-
-  }
-  for (int x = 0; x < SCREEN_WIDTH; x++) {
-    int binmin = adc->adc0->getMaxValue();
-    for (int j = 0; j < binsize; j++) {
-      uint16_t val = adcvals[x * binsize + j];
-      if (val < binmin) binmin = val;
-    }
-    int h = (SCREEN_HEIGHT - tick_height) * (binmin - meanval) / (minval - meanval);
-    display.drawPixel(x, SCREEN_HEIGHT - h - tick_height, SSD1306_WHITE);
-  }
-  display.display();
-#endif
 }
 
 
